@@ -2,34 +2,75 @@
 
 /* Directives */
 
-function fileToDataURLp($q, file) {
-  var dataURLd = $q.defer();
-  var reader = new FileReader();
-  reader.onload = function(e) {
-    dataURLd.resolve(e.target.result);
-  };
-  reader.readAsDataURL(file);
-
-  return dataURLd.promise;
-}
-
 angular.module('myApp.directives', []).
-  directive('myFiles', ['$q', function($q) {
+  directive('myFiles', ['$q', '$sce', function($q, $sce) {
     return {
       scope: {
         files: '=myFiles'
       },
       link: function(scope, element, attr) {
         element.on('change', function() {
-          var promise = attr.multiple ?
+          var fileToDataURLp = function(file) {
+                var dataURLd = $q.defer();
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                  dataURLd.resolve(e.target.result);
+                };
+                reader.readAsDataURL(file);
+
+                return dataURLd.promise;
+              },
+              trustURL = function(url) { return $sce.trustAs('resourceUrl', url); },
+              promise = attr.multiple ?
               $q.all(Array.prototype.map.call(
                 element[0].files,
-                function(file) { return fileToDataURLp($q, file); })) :
-              fileToDataURLp($q, element[0].files[0]);
+                function(file) { return fileToDataURLp(file).then(trustURL); })) :
+              fileToDataURLp(element[0].files[0]).then(trustURL);
           scope.$apply(function() {
             promise.then(function(files) { scope.files = files; })
           });
         });
+      }
+    };
+  }])
+
+  .directive('resizedImage', ['imageTools', function(imageTools) {
+    function newSize(originalSize, maxSize) {
+      var oAspectRatio = originalSize.width / originalSize.height,
+          maxAspectRatio = maxSize.width / maxSize.height,
+          targetDimension = oAspectRatio > maxAspectRatio ? "width" : "height",
+          modRatio = maxSize[targetDimension] / originalSize[targetDimension];
+
+      return {
+        width: Math.round(originalSize.width * modRatio),
+        height: Math.round(originalSize.height * modRatio)
+      }
+    }
+
+    return {
+      template: '<img width="{{width}}" height="{{height}}" ng-src="{{src}}" />',
+      restrict: 'E',
+      scope: {
+        maxWidth: '=',
+        maxHeight: '='
+      },
+      link: function(scope, element, attr) {
+        scope.$watch(
+          function() { return [scope.maxWidth, scope.maxHeight]; },
+          function() {
+            var dataURL = attr.ngSrc,
+                imageP = imageTools.urlToImageP(dataURL),
+                maxSize = { width: scope.maxWidth, height: scope.maxHeight },
+                sizeP = imageP.then(function(image) {
+                  return newSize({ width: image.width, height: image.height }, maxSize);
+                });
+
+            sizeP.then(function(size) {
+              scope.width = size.width;
+              scope.height = size.height;
+              scope.src = dataURL;
+            });
+          }, true);
       }
     };
   }]);

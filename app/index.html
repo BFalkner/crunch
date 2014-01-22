@@ -9,8 +9,14 @@
   <div ng-controller="ImageResizeCtrl">
     <input type="file" multiple my-files="files" />
 
+      <hr />
+
+    <input type="number" ng-model="size.width" />
+    <input type="number" ng-model="size.height" />
     <div ng-repeat="file in files">
-      <img src="{{file}}" />
+      <resized-image ng-src="{{file}}"
+                     max-width="size.width"
+                     max-height="size.height" />
     </div>
   </div>
 

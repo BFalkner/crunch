@@ -55,22 +55,35 @@ angular.module('myApp.directives', []).
         maxHeight: '='
       },
       link: function(scope, element, attr) {
+        scope.imageP = imageTools.imageP(attr.ngSrc);
+
         scope.$watch(
           function() { return [scope.maxWidth, scope.maxHeight]; },
           function() {
-            var dataURL = attr.ngSrc,
-                imageP = imageTools.urlToImageP(dataURL),
-                maxSize = { width: scope.maxWidth, height: scope.maxHeight },
-                sizeP = imageP.then(function(image) {
+            var maxSize = { width: scope.maxWidth, height: scope.maxHeight },
+                sizeP = scope.imageP.then(function(image) {
                   return newSize({ width: image.width, height: image.height }, maxSize);
                 });
 
             sizeP.then(function(size) {
               scope.width = size.width;
               scope.height = size.height;
-              scope.src = dataURL;
             });
-          }, true);
+          },
+          true
+        );
+
+        scope.$watch(
+          function() { return [scope.width, scope.height]; },
+          function() {
+            scope.imageP.then(function(image) {
+              return imageTools.resizeURLP(image, { width: scope.width, height: scope.height });
+            }).then(function(url) {
+              scope.src = url;
+            });;
+          },
+          true
+        )
       }
     };
   }]);

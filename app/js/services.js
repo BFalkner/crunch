@@ -24,9 +24,15 @@ angular.module('myApp.services', []).
           self = this;
 
       $timeout(function() {
-        var pixelArray = self.pixelArray(image);
+        var canvas = document.createElement('canvas'),
+            ctx = canvas.getContext('2d');
 
-        d.resolve(self.pixelArrayToURL(pixelArray));
+        canvas.width = newSize.width;
+        canvas.height = newSize.height;
+
+        ctx.drawImage(image, 0, 0, newSize.width, newSize.height);
+
+        d.resolve(canvas.toDataURL());
       });
 
       return d.promise;
